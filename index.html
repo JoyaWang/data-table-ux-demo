@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Renewal Console — data-dense table work sample</title>
+<style>
+  :root{
+    --bg:#0f1216; --panel:#161b22; --panel2:#1c232c; --line:#262e38;
+    --line2:#303a46; --ink:#e6edf3; --ink2:#a9b6c4; --muted:#7d8b9a;
+    --accent:#4d8dff; --accent2:#1b3a6b; --ok:#3fb950; --warn:#d29922;
+    --high:#f85149; --chip:#212b36;
+    font-synthesis:none;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font:13px/1.45 "Helvetica Neue",Helvetica,Arial,"PingFang SC",sans-serif;
+    -webkit-font-smoothing:antialiased}
+  button,input,select{font:inherit;color:inherit}
+  button{cursor:pointer;background:none;border:none}
+
+  .app{display:flex;flex-direction:column;min-height:100vh}
+
+  /* ---------- top bar ---------- */
+  .top{display:flex;align-items:center;gap:14px;padding:11px 18px;
+    background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:40}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:650;letter-spacing:-.01em}
+  .dot{width:9px;height:9px;border-radius:3px;background:var(--accent)}
+  .navtabs{display:flex;gap:2px;margin-left:8px}
+  .navtabs button{padding:5px 11px;border-radius:6px;color:var(--ink2);font-size:12.5px}
+  .navtabs button.on{background:var(--panel2);color:var(--ink);font-weight:600}
+  .top .spacer{flex:1}
+  .envtag{font-size:11px;color:var(--muted);border:1px solid var(--line2);
+    padding:2px 8px;border-radius:99px}
+  .avatarbtn{width:26px;height:26px;border-radius:50%;background:var(--accent2);
+    border:1px solid var(--line2);font-size:11px;font-weight:700;color:#cfe0ff}
+
+  /* ---------- toolbar ---------- */
+  .bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    padding:12px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .search{position:relative}
+  .search input{width:230px;background:var(--bg);border:1px solid var(--line2);
+    border-radius:7px;padding:6px 10px 6px 28px;outline:none}
+  .search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(77,141,255,.15)}
+  .search .ic{position:absolute;left:9px;top:6px;color:var(--muted);font-size:12px}
+  .btn{border:1px solid var(--line2);background:var(--panel2);border-radius:7px;
+    padding:6px 11px;color:var(--ink2);display:flex;align-items:center;gap:6px}
+  .btn:hover{border-color:#3d4a5a;color:var(--ink)}
+  .btn.on{background:var(--accent2);border-color:var(--accent);color:#dbe8ff}
+  .bar .spacer{flex:1}
+  .cnt{font-size:11.5px;color:var(--muted)}
+
+  /* ---------- filter chips ---------- */
+  .chips{display:flex;align-items:center;gap:7px;flex-wrap:wrap;
+    padding:9px 18px;background:rgba(77,141,255,.05);
+    border-bottom:1px solid var(--line)}
+  .chips .lbl{font-size:11px;color:var(--muted);text-transform:uppercase;
+    letter-spacing:.07em}
+  .chip{display:flex;align-items:center;gap:6px;background:var(--chip);
+    border:1px solid var(--line2);border-radius:99px;padding:3px 5px 3px 10px;
+    font-size:11.5px;color:var(--ink2)}
+  .chip b{color:var(--ink);font-weight:600}
+  .chip .x{width:16px;height:16px;border-radius:50%;display:grid;place-items:center;
+    color:var(--muted);font-size:12px;line-height:1}
+  .chip .x:hover{background:#33404e;color:var(--ink)}
+  .clearchip{font-size:11.5px;color:var(--accent);padding:3px 6px;border-radius:6px}
+  .clearchip:hover{background:rgba(77,141,255,.12)}
+  .shown{font-size:11.5px;color:var(--muted);margin-left:2px}
+
+  /* ---------- bulk bar ---------- */
+  .bulk{display:flex;align-items:center;gap:12px;padding:9px 18px;
+    background:var(--accent2);border-bottom:1px solid var(--accent);
+    font-size:12.5px}
+  .bulk b{color:#fff}
+  .bulk .btn{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.22);
+    color:#dbe8ff}
+  .bulk .btn:hover{background:rgba(255,255,255,.16);color:#fff}
+  .bulk .danger{border-color:#7d2d2d;color:#ffb4b0}
+  .bulk .danger:hover{background:#4a1d1d}
+
+  /* ---------- compare tray ---------- */
+  .tray{padding:12px 18px;border-bottom:1px solid var(--line);background:var(--panel2)}
+  .tray h4{margin:0 0 9px;font-size:11.5px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--muted)}
+  .cmp{width:100%;border-collapse:collapse;font-size:12.5px}
+  .cmp th,.cmp td{padding:6px 10px;border-bottom:1px solid var(--line);text-align:left}
+  .cmp th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;
+    letter-spacing:.05em}
+  .cmp td.num,.cmp th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .delta-up{color:var(--high)} .delta-dn{color:var(--ok)}
+  .best{background:rgba(63,185,80,.08)}
+
+  /* ---------- table ---------- */
+  .wrap{flex:1;overflow:auto}
+  table.grid{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px}
+  .grid thead th{position:sticky;top:0;z-index:20;background:var(--panel);
+    border-bottom:1px solid var(--line2);text-align:left;font-weight:600;
+    color:var(--ink2);padding:0;white-space:nowrap}
+  .grid thead th button{width:100%;padding:9px 10px;display:flex;align-items:center;
+    gap:6px;color:inherit}
+  .grid thead th button:hover{background:var(--panel2);color:var(--ink)}
+  .grid thead th.num button{justify-content:flex-end}
+  .grid thead th.sorted button{color:var(--accent)}
+  .sortic{font-size:9px;opacity:.5}
+  .grid th.sorted .sortic{opacity:1}
+  .grid th.pin,.grid td.pin{position:sticky;left:0;z-index:10;background:var(--panel)}
+  .grid td.pin{background:#141a21}
+  .grid thead th.pin{z-index:30}
+
+  .grid tbody td{padding:0;border-bottom:1px solid var(--line);
+    color:var(--ink2);white-space:nowrap}
+  .grid tbody tr:hover td{background:#151b23}
+  .grid tbody tr.sel td{background:rgba(77,141,255,.10)}
+  .grid tbody tr.cmped td{background:rgba(210,153,34,.09)}
+  .cell{height:34px;display:flex;align-items:center;padding:0 10px;
+    overflow:hidden;text-overflow:ellipsis}
+  td.num .cell{justify-content:flex-end;font-variant-numeric:tabular-nums;
+    color:var(--ink)}
+  td.who .cell{color:var(--ink)}
+  .cbox{width:15px;height:15px;accent-color:var(--accent);cursor:pointer}
+  td.selcell .cell{justify-content:center}
+
+  .pill{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:99px;
+    white-space:nowrap}
+  .p-ok{background:rgba(63,185,80,.15);color:#57d16b}
+  .p-warn{background:rgba(210,153,34,.16);color:#e3b341}
+  .p-high{background:rgba(248,81,73,.15);color:#ff8a84}
+  .p-new{background:rgba(77,141,255,.16);color:#8ab4ff}
+  .p-idle{background:#232c36;color:var(--muted)}
+
+  .util{display:flex;align-items:center;gap:7px;justify-content:flex-end;width:100%}
+  .track{width:44px;height:5px;border-radius:99px;background:#2a333e;overflow:hidden}
+  .fill{height:100%;border-radius:99px;background:var(--accent)}
+  .fill.warn{background:var(--warn)} .fill.high{background:var(--high)}
+
+  .editcell{cursor:text;border-radius:5px;padding:3px 6px;margin:0 -6px}
+  .editcell:hover{background:#222b36;box-shadow:inset 0 0 0 1px var(--line2)}
+  .editcell input{width:100%;background:#0c1116;border:1px solid var(--accent);
+    border-radius:5px;padding:2px 5px;outline:none;text-align:right}
+
+  /* ---------- states ---------- */
+  .state{padding:56px 18px;text-align:center;color:var(--muted)}
+  .state .big{font-size:26px;margin-bottom:8px;opacity:.5}
+  .state h3{margin:0 0 5px;color:var(--ink2);font-size:14px}
+  .state p{margin:0 0 12px;font-size:12.5px}
+  .skeleton td{padding:0;border-bottom:1px solid var(--line)}
+  .sk{height:34px;display:flex;align-items:center;padding:0 10px}
+  .sk i{display:block;height:9px;border-radius:99px;background:#1e2630;width:100%;
+    animation:pulse 1.3s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.45}50%{opacity:.9}}
+
+  /* ---------- config page ---------- */
+  .cfg{padding:22px 18px;max-width:900px}
+  .cfg h2{margin:0 0 4px;font-size:16px}
+  .cfg .lead{color:var(--muted);margin:0 0 20px;font-size:12.5px}
+  .group{border:1px solid var(--line);border-radius:9px;background:var(--panel);
+    margin-bottom:12px;overflow:hidden}
+  .group > h3{margin:0;padding:11px 14px;font-size:12.5px;
+    border-bottom:1px solid var(--line);background:var(--panel2);
+    display:flex;align-items:center;gap:8px}
+  .group > h3 span{font-size:11px;color:var(--muted);font-weight:400}
+  .row{display:flex;align-items:center;gap:14px;padding:11px 14px;
+    border-bottom:1px solid var(--line)}
+  .row:last-child{border-bottom:none}
+  .row .meta{flex:1}
+  .row .meta b{display:block;font-weight:600;font-size:12.5px}
+  .row .meta i{font-style:normal;color:var(--muted);font-size:11.5px}
+  .row.destructive{background:rgba(248,81,73,.05)}
+  .switch{width:38px;height:21px;border-radius:99px;background:#2b3541;
+    border:1px solid var(--line2);position:relative;flex:none;transition:.15s}
+  .switch.on{background:var(--accent);border-color:var(--accent)}
+  .switch::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;
+    border-radius:50%;background:#fff;transition:.15s}
+  .switch.on::after{left:19px}
+  .numfield{width:82px;background:var(--bg);border:1px solid var(--line2);
+    border-radius:6px;padding:5px 8px;text-align:right;
+    font-variant-numeric:tabular-nums;outline:none}
+  .numfield:focus{border-color:var(--accent)}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .savebar{display:flex;align-items:center;gap:12px;padding:13px 18px;
+    border-top:1px solid var(--line);background:var(--panel);position:sticky;bottom:0}
+  .savebar .dirty{font-size:12px;color:var(--warn)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#06121f;
+    font-weight:650}
+  .btn.primary:hover{background:#6ba0ff}
+
+  .note{padding:10px 18px;border-top:1px solid var(--line);color:var(--muted);
+    font-size:11.5px;background:var(--panel)}
+  .note b{color:var(--ink2)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="top">
+    <div class="brand"><span class="dot"></span>Renewal Console</div>
+    <div class="navtabs">
+      <button class="on" data-view="dash">Dashboard</button>
+      <button data-view="cfg">Configuration</button>
+    </div>
+    <div class="spacer"></div>
+    <span class="envtag">Staging</span>
+    <button class="avatarbtn">JM</button>
+  </div>
+
+  <!-- ============ DASHBOARD ============ -->
+  <div id="view-dash">
+    <div class="bar">
+      <div class="search"><span class="ic">&#9906;</span>
+        <input id="q" placeholder="Search vendor, owner, category&hellip;">
+      </div>
+      <button class="btn" id="fStatus">Status <span class="sortic">&#9662;</span></button>
+      <button class="btn" id="fRisk">Utilisation risk <span class="sortic">&#9662;</span></button>
+      <button class="btn" id="btnCompare">Compare rows</button>
+      <div class="spacer"></div>
+      <button class="btn" id="btnCols">Columns <span class="sortic">&#9662;</span></button>
+      <span class="cnt" id="colcount">9 of 9</span>
+      <button class="btn" id="btnDemo">Cycle states</button>
+    </div>
+
+    <div class="chips" id="chips"></div>
+    <div id="bulkhost"></div>
+    <div id="trayhost"></div>
+
+    <div class="wrap">
+      <table class="grid" id="grid">
+        <thead id="thead"></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div id="statehost"></div>
+    </div>
+  </div>
+
+  <!-- ============ CONFIGURATION ============ -->
+  <div id="view-cfg" style="display:none">
+    <div class="cfg">
+      <h2>Configuration</h2>
+      <p class="lead">Grouped by the task you came here to do, not by the shape of the data.</p>
+
+      <div class="group">
+        <h3>Table behaviour <span>how the dashboard behaves for everyone</span></h3>
+        <div class="row">
+          <div class="meta"><b>Default row density</b><i>Compact fits more rows; comfortable is easier to scan.</i></div>
+          <select class="numfield" style="width:120px"><option>Compact</option><option>Comfortable</option></select>
+        </div>
+        <div class="row">
+          <div class="meta"><b>Remember last filter</b><i>Reopen the dashboard with the filters you left it in.</i></div>
+          <button class="switch on" data-sw></button>
+        </div>
+        <div class="row">
+          <div class="meta"><b>Show currency in full</b><i>Off abbreviates large values (1.2M) to keep columns narrow.</i></div>
+          <button class="switch" data-sw></button>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3>Alerts <span>applies to every contract in scope</span></h3>
+        <div class="row">
+          <div class="meta"><b>Flag under-used licences</b><i>Utilisation below this share is flagged on the row.</i></div>
+          <input class="numfield" value="60" type="number"><span style="color:var(--muted)">%</span>
+        </div>
+        <div class="row">
+          <div class="meta"><b>Renewal warning window</b><i>How far ahead a renewal starts showing as due.</i></div>
+          <input class="numfield" value="45" type="number"><span style="color:var(--muted)">days</span>
+        </div>
+        <div class="row">
+          <div class="meta"><b>Notify owner on flag</b><i>Sends a digest to the contract owner, not the whole team.</i></div>
+          <button class="switch on" data-sw></button>
+        </div>
+      </div>
+
+      <div class="group">
+        <h3 style="color:#ff9a94">Destructive <span>separated, and styled as such</span></h3>
+        <div class="row destructive">
+          <div class="meta"><b>Reset all filters and column choices</b>
+            <i>Returns this account to factory defaults. Does not touch contract data.</i></div>
+          <button class="btn" style="border-color:#7d2d2d;color:#ffb4b0">Reset&hellip;</button>
+        </div>
+      </div>
+      <p class="hint">Saving applies to the current workspace. Nothing here is destructive to contract records.</p>
+    </div>
+    <div class="savebar">
+      <span class="dirty" id="dirty" style="display:none">&#9679; Unsaved changes</span>
+      <div class="spacer" style="flex:1"></div>
+      <button class="btn" id="discard">Discard</button>
+      <button class="btn primary" id="save">Save changes</button>
+    </div>
+  </div>
+
+  <div class="note"><b>Work sample.</b> Vendors, values and dates are generated. Built to demonstrate table interaction patterns — density, filter state, multi-column sort, row comparison, inline editing, bulk selection, and empty/loading states.</div>
+</div>
+
+<script>
+/* ============================ data ============================ */
+const CATS=["Infrastructure","Security","Analytics","Design","Support","Data","Comms","DevTools"];
+const STATUS=[["Active","p-ok"],["Renewal due","p-warn"],["Overdue","p-high"],["Trial","p-new"],["Dormant","p-idle"]];
+const FIRST=["Alder","Bramble","Cobalt","Dunlin","Ember","Fathom","Granite","Halcyon","Ivory","Juniper","Kestrel","Lantern","Marble","Nimbus","Onyx","Peregrine","Quarry","Rowan","Sable","Tamarind"];
+const LAST=["Systems","Works","Labs","Cloud","Ops","Group","Studio","Digital","Partners","Technologies"];
+const PEOPLE=["A. Okonkwo","R. Delacroix","M. Sandoval","T. Nakamura","J. Whitfield","P. Adeyemi","L. Fournier","S. Bjornsson","K. Ramaswamy","D. Ellery"];
+
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const rnd=mulberry(20251212);
+
+const ROWS=Array.from({length:48},(_,i)=>{
+  const st=STATUS[Math.floor(rnd()*STATUS.length)];
+  const util=Math.round(8+rnd()*96);
+  const val=Math.round((2400+rnd()*118000)/100)*100;
+  const prev=Math.round(val*(0.72+rnd()*0.6)/100)*100;
+  const d=new Date(2025,11,1); d.setDate(d.getDate()+Math.floor(rnd()*210));
+  return {
+    id:"C-"+(1040+i),
+    vendor:FIRST[Math.floor(rnd()*FIRST.length)]+" "+LAST[Math.floor(rnd()*LAST.length)],
+    cat:CATS[Math.floor(rnd()*CATS.length)],
+    owner:PEOPLE[Math.floor(rnd()*PEOPLE.length)],
+    renewal:d.toISOString().slice(0,10),
+    value:val, prev, util,
+    seats:Math.round(5+rnd()*900),
+    status:st[0], statusCls:st[1]
+  };
+});
+
+/* ============================ columns ============================ */
+const COLS=[
+  {k:"sel",    label:"",            w:38,  pinned:true,  cls:"selcell"},
+  {k:"vendor", label:"Vendor",      w:210, pinned:true,  cls:"who"},
+  {k:"cat",    label:"Category",    w:112},
+  {k:"owner",  label:"Owner",       w:132},
+  {k:"renewal",label:"Renewal",     w:104},
+  {k:"seats",  label:"Seats",       w:74,  num:true},
+  {k:"util",   label:"Utilisation", w:132, num:true},
+  {k:"value",  label:"Annual value",w:118, num:true},
+  {k:"delta",  label:"vs last yr",  w:104, num:true},
+  {k:"status", label:"Status",      w:112}
+];
+const hidden=new Set();
+
+/* ============================ state ============================ */
+let sort=[{k:"value",dir:-1}];
+let q="", fStatus=null, fRisk=false;
+let selected=new Set(), compareMode=false, comparing=new Set();
+let editing=null, demoState=null; // null | 'loading' | 'empty'
+
+/* ============================ helpers ============================ */
+const $=s=>document.querySelector(s);
+const money=v=>"$"+v.toLocaleString("en-US");
+const moneyShort=v=>v>=1e6?"$"+(v/1e6).toFixed(1)+"M":v>=1e3?"$"+Math.round(v/1e3)+"k":"$"+v;
+const visible=()=>COLS.filter(c=>!hidden.has(c.k));
+
+function filtered(){
+  let r=ROWS.slice();
+  if(q){const s=q.toLowerCase();
+    r=r.filter(x=>(x.vendor+x.cat+x.owner+x.id).toLowerCase().includes(s))}
+  if(fStatus) r=r.filter(x=>x.status===fStatus);
+  if(fRisk)   r=r.filter(x=>x.util<60);
+  for(let i=sort.length-1;i>=0;i--){const {k,dir}=sort[i];
+    r.sort((a,b)=>{
+      let av=k==="delta"?a.value-a.prev:a[k], bv=k==="delta"?b.value-b.prev:b[k];
+      if(typeof av==="string") return dir*av.localeCompare(bv);
+      return dir*(av-bv);
+    });
+  }
+  return r;
+}
+
+/* ============================ header ============================ */
+function renderHead(){
+  const th=visible().map(c=>{
+    const si=sort.findIndex(s=>s.k===c.k);
+    const sorted=si>=0;
+    const arrow=sorted?(sort[si].dir<0?"&#9660;":sort[si].dir>0?"&#9650;":""):
+      (sort.length>1?'<span class="sortic">+</span>':'');
+    const badge=sorted&&sort.length>1?`<span style="font-size:9px;opacity:.7">${si+1}</span>`:"";
+    if(c.k==="sel") return `<th class="${c.pinned?'pin':''}" style="width:${c.w}px"></th>`;
+    return `<th class="${c.num?'num ':''}${c.pinned?'pin ':''}${sorted?'sorted':''}"
+      style="width:${c.w}px" data-k="${c.k}">
+      <button data-sort="${c.k}">
+        <span>${c.label}</span>${badge}<span class="sortic">${arrow}</span>
+      </button></th>`;
+  }).join("");
+  $("#thead").innerHTML=`<tr>${th}</tr>`;
+  $("#thead").querySelectorAll("[data-sort]").forEach(b=>{
+    b.onclick=e=>{const k=b.dataset.sort;const shift=e.shiftKey;
+      const i=sort.findIndex(s=>s.k===k);
+      if(!shift){ sort = (i>=0&&sort.length===1)?[{k,dir:-sort[i].dir}]:[{k,dir:-1}]; }
+      else { if(i>=0){ sort[i].dir=-sort[i].dir; } else sort.push({k,dir:-1}); }
+      render();
+    };
+  });
+}
+
+/* ============================ rows ============================ */
+function renderRows(){
+  if(demoState==="loading") return renderSkeleton();
+  if(demoState==="empty")   return renderEmpty();
+  const rows=filtered();
+  const tb=$("#tbody");
+  if(!rows.length) return renderEmpty(true);
+  $("#statehost").innerHTML="";
+
+  tb.innerHTML=rows.map(r=>{
+    const cells=visible().map(c=>{
+      if(c.k==="sel"){
+        const on=selected.has(r.id);
+        return `<td class="selcell ${c.pinned?'pin':''}"><div class="cell">
+          <input class="cbox" type="checkbox" ${on?"checked":""} data-sel="${r.id}"></div></td>`;
+      }
+      const pin=c.pinned?' pin':'';
+      if(c.k==="util"){
+        const cls=r.util<40?"high":r.util<60?"warn":"";
+        return `<td class="num${pin}"><div class="cell"><div class="util">
+          <span>${r.util}%</span><div class="track"><div class="fill ${cls}" style="width:${Math.min(r.util,100)}%"></div></div>
+        </div></div></td>`;
+      }
+      if(c.k==="delta"){
+        const d=r.value-r.prev, up=d>0;
+        const pct=Math.round(d/r.prev*100);
+        return `<td class="num${pin}"><div class="cell">
+          <span class="${up?'delta-up':'delta-dn'}">${up?"+":""}${pct}%</span></div></td>`;
+      }
+      if(c.k==="value"){
+        if(editing===r.id){
+          return `<td class="num${pin}"><div class="cell">
+            <input id="editbox" type="number" value="${r.value}" data-edit="${r.id}"></div></td>`;
+        }
+        return `<td class="num${pin}"><div class="cell">
+          <span class="editcell" data-begin="${r.id}" title="Click to edit">${money(r.value)}</span></div></td>`;
+      }
+      if(c.k==="status")
+        return `<td class="${pin}"><div class="cell"><span class="pill ${r.statusCls}">${r.status}</span></div></td>`;
+      if(c.k==="vendor")
+        return `<td class="who${pin}"><div class="cell">${r.vendor}</div></td>`;
+      return `<td class="${pin}"><div class="cell">${r[c.k]}</div></td>`;
+    }).join("");
+    const cls=[selected.has(r.id)?"sel":"",comparing.has(r.id)?"cmped":""].join(" ");
+    return `<tr class="${cls}" data-row="${r.id}">${cells}</tr>`;
+  }).join("");
+
+  tb.querySelectorAll("[data-sel]").forEach(cb=>{
+    cb.onchange=()=>{const id=cb.dataset.sel;
+      cb.checked?selected.add(id):selected.delete(id);
+      renderBulk(); renderChips(); renderRows();};
+  });
+  tb.querySelectorAll("[data-begin]").forEach(el=>{
+    el.onclick=()=>{editing=el.dataset.begin;renderRows();
+      const b=$("#editbox"); if(b){b.focus();b.select();
+        b.onblur=()=>commitEdit(b);
+        b.onkeydown=e=>{if(e.key==="Enter")commitEdit(b);if(e.key==="Escape"){editing=null;renderRows();}};}};
+  });
+  tb.querySelectorAll("[data-row]").forEach(tr=>{
+    if(!compareMode) return;
+    tr.style.cursor="pointer";
+    tr.onclick=e=>{ if(e.target.closest("input,button,.editcell")) return;
+      const id=tr.dataset.row;
+      if(comparing.has(id)) comparing.delete(id);
+      else if(comparing.size<3) comparing.add(id);
+      renderRows(); renderTray(); };
+  });
+}
+
+function commitEdit(b){
+  const id=b.dataset.edit, v=Math.max(0,Math.round(+b.value||0));
+  const r=ROWS.find(x=>x.id===id); if(r) r.value=v;
+  editing=null; renderRows(); renderChips();
+}
+
+function renderSkeleton(){
+  $("#tbody").innerHTML=Array.from({length:9},()=>{
+    const cells=visible().map(c=>
+      `<td class="${c.num?"num ":""}${c.pinned?"pin":""}"><div class="sk"><i style="width:${
+        35+Math.round(Math.random()*55)}%"></i></div></td>`).join("");
+    return `<tr class="skeleton">${cells}</tr>`;
+  }).join("");
+  $("#statehost").innerHTML="";
+}
+
+function renderEmpty(filteredEmpty){
+  $("#tbody").innerHTML="";
+  $("#statehost").innerHTML = filteredEmpty ? `
+    <div class="state">
+      <div class="big">&#8709;</div>
+      <h3>No contracts match these filters</h3>
+      <p>48 contracts exist in this workspace &mdash; none match the current search and filter combination.</p>
+      <button class="btn" id="resetFromEmpty">Clear all filters</button>
+    </div>` : `
+    <div class="state">
+      <div class="big">&#9671;</div>
+      <h3>No contracts yet</h3>
+      <p>This workspace has no contracts imported. Connect a source or import a CSV to get started.</p>
+      <button class="btn">Import contracts&hellip;</button>
+    </div>`;
+  const b=$("#resetFromEmpty"); if(b) b.onclick=clearFilters;
+}
+
+/* ============================ chips ============================ */
+function renderChips(){
+  const host=$("#chips"), out=[];
+  if(q) out.push(`<span class="chip">search: <b>${q}</b><button class="x" data-clear="q">&times;</button></span>`);
+  if(fStatus) out.push(`<span class="chip">status: <b>${fStatus}</b><button class="x" data-clear="s">&times;</button></span>`);
+  if(fRisk) out.push(`<span class="chip">utilisation: <b>below 60%</b><button class="x" data-clear="r">&times;</button></span>`);
+  const n=filtered().length;
+  if(out.length){
+    host.innerHTML=`<span class="lbl">Filters</span>${out.join("")}
+      <button class="clearchip" id="clearAll">Clear all</button>
+      <span class="shown">showing <b style="color:var(--ink2)">${n}</b> of ${ROWS.length}</span>`;
+    host.querySelectorAll("[data-clear]").forEach(b=>b.onclick=()=>{
+      const t=b.dataset.clear;
+      if(t==="q"){q="";$("#q").value=""}
+      if(t==="s") fStatus=null;
+      if(t==="r") fRisk=false;
+      render();});
+    $("#clearAll").onclick=clearFilters;
+  } else {
+    host.innerHTML=`<span class="lbl">Filters</span>
+      <span class="shown">none &mdash; showing all <b style="color:var(--ink2)">${ROWS.length}</b> contracts</span>`;
+    host.querySelector(".lbl").style.opacity=".6";
+  }
+  host.style.display="";
+}
+function clearFilters(){q="";$("#q").value="";fStatus=null;fRisk=false;render();}
+
+/* ============================ bulk ============================ */
+function renderBulk(){
+  const h=$("#bulkhost");
+  if(!selected.size||demoState){h.innerHTML="";return}
+  h.innerHTML=`<div class="bulk">
+    <span><b>${selected.size}</b> selected</span>
+    <button class="btn">Export CSV</button>
+    <button class="btn">Assign owner&hellip;</button>
+    <button class="btn">Set status&hellip;</button>
+    <button class="btn danger">Archive</button>
+    <div class="spacer" style="flex:1"></div>
+    <button class="btn" id="clearSel">Clear selection</button>
+  </div>`;
+  $("#clearSel").onclick=()=>{selected.clear();render()};
+}
+
+/* ============================ compare tray ============================ */
+function renderTray(){
+  const h=$("#trayhost");
+  if(!compareMode){h.innerHTML="";return}
+  if(comparing.size<2){
+    h.innerHTML=`<div class="tray"><h4>Compare &mdash; pick 2 or 3 rows</h4>
+      <div style="color:var(--muted);font-size:12.5px">
+        ${comparing.size===0?"No rows picked yet.":"1 row picked &mdash; pick one more."}
+        Click rows in the table to add them.</div></div>`;
+    return;
+  }
+  const rs=[...comparing].map(id=>ROWS.find(r=>r.id===id));
+  const F=[["Annual value","value",v=>money(v),true],
+           ["vs last year","delta",v=>v,v=>v],
+           ["Seats","seats",v=>v.toLocaleString(),true],
+           ["Utilisation","util",v=>v+"%",true],
+           ["Status","status",v=>v,false],
+           ["Renewal","renewal",v=>v,false]];
+  const best=(k)=>{ if(!["value","seats","util"].includes(k))return null;
+    let bi=0; rs.forEach((r,i)=>{if(r[k]>rs[bi][k])bi=i});
+    return rs[bi][k]===rs[0][k]?0:bi; };
+  const body=F.map(([lab,k,fmt,hi])=>{
+    const b=hi?best(k):null;
+    const cells=rs.map((r,i)=>{
+      let v = k==="delta" ? r.value-r.prev : r[k];
+      let shown = k==="delta"
+        ? `<span class="${v>0?'delta-up':'delta-dn'}">${v>0?"+":""}${Math.round(v/r.prev*100)}%</span>`
+        : fmt(v);
+      return `<td class="${hi?"num":""} ${b===i?"best":""}">${shown}</td>`;
+    }).join("");
+    return `<tr><th>${lab}</th>${cells}</tr>`;
+  }).join("");
+  h.innerHTML=`<div class="tray">
+    <h4>Compare &mdash; ${rs.length} rows <span style="text-transform:none;letter-spacing:0;color:var(--accent)">(green marks the higher value)</span></h4>
+    <table class="cmp">
+      <thead><tr><th></th>${rs.map(r=>`<th>${r.vendor}</th>`).join("")}</tr></thead>
+      <tbody>${body}</tbody>
+    </table>
+    <div style="margin-top:9px"><button class="btn" id="exitCmp">Exit compare</button></div>
+  </div>`;
+  $("#exitCmp").onclick=()=>{compareMode=false;comparing.clear();render()};
+}
+
+/* ============================ columns menu ============================ */
+function renderColMenu(){
+  const m=$("#btnCols");
+  m.onclick=()=>{
+    const opts=COLS.filter(c=>c.k!=="sel")
+      .map(c=>`<label style="display:flex;gap:8px;align-items:center;padding:5px 8px;border-radius:6px;cursor:pointer">
+        <input type="checkbox" ${hidden.has(c.k)?"":"checked"} data-col="${c.k}">
+        <span>${c.label}</span></label>`).join("");
+    const pop=document.createElement("div");
+    pop.style.cssText=`position:absolute;right:18px;top:96px;z-index:60;background:var(--panel2);
+      border:1px solid var(--line2);border-radius:9px;padding:7px;min-width:196px;
+      box-shadow:0 12px 34px rgba(0,0,0,.5)`;
+    pop.innerHTML=opts;
+    pop.querySelectorAll("[data-col]").forEach(cb=>cb.onchange=()=>{
+      cb.checked?hidden.delete(cb.dataset.col):hidden.add(cb.dataset.col);
+      $("#colcount").textContent=`${visible().length-1} of 9`;
+      render();
+    });
+    document.body.appendChild(pop);
+    const off=e=>{if(!pop.contains(e.target)){pop.remove();document.removeEventListener("mousedown",off)}};
+    setTimeout(()=>document.addEventListener("mousedown",off),0);
+  };
+}
+
+/* ============================ filter menus ============================ */
+function renderFilterMenus(){
+  $("#fStatus").onclick=()=>{
+    const c=["Active","Renewal due","Overdue","Trial","Dormant"];
+    const nxt=c[(c.indexOf(fStatus)+1)%c.length]; fStatus=nxt; render();
+  };
+  $("#fRisk").onclick=()=>{fRisk=!fRisk;render()};
+  $("#fStatus").classList.toggle("on",!!fStatus);
+  $("#fRisk").classList.toggle("on",fRisk);
+  $("#btnCompare").classList.toggle("on",compareMode);
+}
+
+/* ============================ views ============================ */
+function setView(v){
+  $("#view-dash").style.display = v==="dash"?"":"none";
+  $("#view-cfg").style.display  = v==="cfg"?"":"none";
+  document.querySelectorAll(".navtabs button").forEach(b=>b.classList.toggle("on",b.dataset.view===v));
+}
+
+/* ============================ render ============================ */
+function render(){
+  renderHead(); renderChips(); renderBulk(); renderTray(); renderRows(); renderFilterMenus();
+}
+
+/* ============================ boot ============================ */
+$("#q").oninput=e=>{q=e.target.value;demoState=null;render()};
+$("#btnCompare").onclick=()=>{compareMode=!compareMode;if(!compareMode)comparing.clear();render()};
+$("#btnDemo").onclick=()=>{
+  demoState = demoState===null ? "loading" : demoState==="loading" ? "empty" : null;
+  render();
+  if(demoState==="loading") setTimeout(()=>{if(demoState==="loading"){demoState=null;render()}},1400);
+};
+document.querySelectorAll(".navtabs button").forEach(b=>b.onclick=()=>setView(b.dataset.view));
+document.querySelectorAll("[data-sw]").forEach(s=>s.onclick=()=>{
+  s.classList.toggle("on"); $("#dirty").style.display="";
+});
+document.querySelectorAll(".cfg input,.cfg select").forEach(i=>i.oninput=()=>{$("#dirty").style.display=""});
+$("#save").onclick=()=>$("#dirty").style.display="none";
+$("#discard").onclick=()=>$("#dirty").style.display="none";
+
+renderColMenu();
+setView("dash");
+render();
+</script>
+</body>
+</html>
